@@ -75,6 +75,8 @@ List<GameSummary> summaries = [];
 
 await SimulateGames(Consts.SimGamesConst, Consts.RoundsConst);
 
+AnsiConsole.Prompt(new TextPrompt<string>("Press enter to exit"));
+
 async Task SimulateGames(int simGames, int rounds)
 {
     await Parallel.ForAsync(0, Consts.SimGamesConst, async (_, _) =>

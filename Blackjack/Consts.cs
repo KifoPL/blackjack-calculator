@@ -8,4 +8,14 @@ public static class Consts
 
     public const int SimGamesConst = 100;
     public const int RoundsConst = 25;
+
+    public static LogVerbosity LogVerbosity => LogVerbosity.PerGame;
+}
+
+public enum LogVerbosity
+{
+    EveryMove,
+    PerRound,
+    PerGame,
+    PerSimulation
 }

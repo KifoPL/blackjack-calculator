@@ -37,8 +37,11 @@ public class Player(decimal balance)
     {
         Balance -= amount;
         CurrentBet = amount;
-        
-        AnsiConsole.WriteLine($"Player bets {amount}.");
+
+        if (Consts.LogVerbosity <= LogVerbosity.EveryMove)
+        {
+            AnsiConsole.WriteLine($"Player bets {amount}.");
+        }
     }
     
     public void Lose()
@@ -71,8 +74,11 @@ public class Player(decimal balance)
     {
         Bet(CurrentBet);
         CurrentBet *= 2;
-        
-        AnsiConsole.WriteLine($"Player doubles down, total bet {CurrentBet}.");
+
+        if (Consts.LogVerbosity <= LogVerbosity.EveryMove)
+        {
+            AnsiConsole.WriteLine($"Player doubles down, total bet {CurrentBet}.");
+        }
     }
 
     public const string Currency = "PLN";

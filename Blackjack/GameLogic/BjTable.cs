@@ -48,10 +48,13 @@ public class BjTable
             throw new InvalidOperationException("Player does not have enough money to bet that amount");
         }
         
-        await Game.StartGame(bet);
-        
-        Context?.UpdateTarget(Game.RenderGameStatus());
-        Context?.Refresh();
+        await Game.StartRound(bet);
+
+        if (Consts.LogVerbosity <= LogVerbosity.PerRound)
+        {
+            Context?.UpdateTarget(Game.RenderGameStatus());
+            Context?.Refresh();    
+        }
         
         return Game;
     }

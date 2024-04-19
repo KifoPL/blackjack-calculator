@@ -31,20 +31,29 @@ public class GameSimulator
             for (int i = 0; i < _roundsTotal; i++)
             {
                 Rounds.Add(await Strategy.PlayGame());
-                AnsiConsole.Write(new Rows(new Panel(new JsonText(JsonSerializer.Serialize(GameSummary(),
-                    GameSummarySerializerContext.Default.GameSummary)))));
+                if (Consts.LogVerbosity <= LogVerbosity.PerGame)
+                {
+                    AnsiConsole.Write(new Rows(new Panel(new JsonText(JsonSerializer.Serialize(GameSummary(),
+                        GameSummarySerializerContext.Default.GameSummary)))));    
+                }
             }
 
             while (Rounds.Last().Status == GameStatus.DealerWins)
             {
                 Rounds.Add(await Strategy.PlayGame());
-                AnsiConsole.Write(new Rows(new Panel(new JsonText(JsonSerializer.Serialize(GameSummary(),
-                    GameSummarySerializerContext.Default.GameSummary)))));
+                if (Consts.LogVerbosity <= LogVerbosity.PerGame)
+                {
+                    AnsiConsole.Write(new Rows(new Panel(new JsonText(JsonSerializer.Serialize(GameSummary(),
+                        GameSummarySerializerContext.Default.GameSummary)))));
+                }
             }
         }
         catch (Exception e)
         {
-            AnsiConsole.WriteException(e, ExceptionFormats.ShortenEverything);
+            if (Consts.LogVerbosity <= LogVerbosity.PerGame)
+            {
+                AnsiConsole.WriteException(e, ExceptionFormats.ShortenEverything);
+            }
         }
 
         var summary = GameSummary();
