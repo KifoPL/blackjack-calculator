@@ -1,75 +1,74 @@
 using Blackjack.GameLogic;
 using Spectre.Console;
-using Table = Blackjack.GameLogic.Table;
 
 namespace Blackjack;
 
-public class AutoStrategy(Table table, Player player)
+public class Strategy(BjTable bjTable, Player player)
 {
-    public Game Game => Table.Game ?? Table.NewGame(Player);
-    public Table Table { get; init; } = table;
+    public Round Round => BjTable.Game ?? BjTable.NewGame(Player);
+    public BjTable BjTable { get; init; } = bjTable;
     public Player Player { get; init; } = player;
 
-    private BettingStrategy BettingStrategy { get; } = new(table, player);
+    private BettingStrategy BettingStrategy { get; } = new(bjTable, player);
 
-    public async Task<Game> PlayGame()
+    public async Task<Round> PlayGame()
     {
-        if (Table.Game is null or { Status: not GameStatus.InProgress })
+        if (BjTable.Game is null or { Status: not GameStatus.InProgress })
         {
-            Table.NewGame(Player);
+            BjTable.NewGame(Player);
         }
 
-        if (Game.Status is GameStatus.New)
+        if (Round.Status is GameStatus.New)
         {
             var bet = BettingStrategy.GetBet();
             
-            await Table.StartGame(bet);
+            await BjTable.StartGame(bet);
             
-            Table.Context?.UpdateTarget(Game.RenderGameStatus());
-            Table.Context?.Refresh();
+            BjTable.Context?.UpdateTarget(Round.RenderGameStatus());
+            BjTable.Context?.Refresh();
         }
 
-        while (Game.Status is GameStatus.InProgress)
+        while (Round.Status is GameStatus.InProgress)
         {
             await PlayMove(SelectMove());
         }
 
-        BettingStrategy.Update(Game.Status);
+        BettingStrategy.Update(Round.Status);
 
-        return Game;
+        return Round;
     }
 
     public Move SelectMove()
     {
-        if (Game.PlayerHand.IsSoft)
+        if (Round.PlayerHand.IsSoft)
         {
-            return Game.PlayerHand.Score switch
+            return Round.PlayerHand.Score switch
             {
                 >= 20 => Move.Stand,
-                19 => Game.DealerHand.Score switch
+                19 => Round.DealerHand.Score switch
                 {
                     6 => Move.Double,
                     _ => Move.Stand
                 },
-                18 => Game.DealerHand.Score switch
+                18 => Round.DealerHand.Score switch
                 {
                     >= 9 => Move.Hit,
                     >= 7 => Move.Stand,
                     _ => Move.Double
                 },
-                17 => Game.DealerHand.Score switch
+                17 => Round.DealerHand.Score switch
                 {
                     >= 7 => Move.Hit,
                     >= 3 => Move.Double,
                     _ => Move.Stand
                 },
-                15 or 16 => Game.DealerHand.Score switch
+                15 or 16 => Round.DealerHand.Score switch
                 {
                     >= 7 => Move.Hit,
                     >= 4 => Move.Double,
                     _ => Move.Stand
                 },
-                14 or 13 => Game.DealerHand.Score switch
+                14 or 13 => Round.DealerHand.Score switch
                 {
                     >= 7 => Move.Hit,
                     >= 5 => Move.Double,
@@ -79,26 +78,26 @@ public class AutoStrategy(Table table, Player player)
             };
         }
 
-        return Game.PlayerHand.Score switch
+        return Round.PlayerHand.Score switch
         {
             >= 17 => Move.Stand,
-            >= 13 => Game.DealerHand.Score switch
+            >= 13 => Round.DealerHand.Score switch
             {
                 >= 7 => Move.Hit,
                 _ => Move.Stand
             },
-            12 => Game.DealerHand.Score switch
+            12 => Round.DealerHand.Score switch
             {
                 < 4 or > 6 => Move.Hit,
                 _ => Move.Stand
             },
             11 => Move.Double,
-            10 => Game.DealerHand.Score switch
+            10 => Round.DealerHand.Score switch
             {
                 < 10 => Move.Double,
                 _ => Move.Hit
             },
-            9 => Game.DealerHand.Score switch
+            9 => Round.DealerHand.Score switch
             {
                 < 7 => Move.Double,
                 _ => Move.Hit
@@ -112,20 +111,20 @@ public class AutoStrategy(Table table, Player player)
         switch (move)
         {
             case Move.Hit:
-                await Game.Hit();
+                await Round.Hit();
                 break;
             case Move.Stand:
-                await Game.Stand();
+                await Round.Stand();
                 break;
             case Move.Double:
-                if (Game.PlayerHand.Cards.Count is 2 && Player.CanBet(Player.CurrentBet))
+                if (Round.PlayerHand.Cards.Count is 2 && Player.CanBet(Player.CurrentBet))
                 {
                     BettingStrategy.PreviousBet *= 2;
-                    await Game.DoubleDown();
+                    await Round.DoubleDown();
                 }
                 else
                 {
-                    await Game.Hit();
+                    await Round.Hit();
                 }
 
                 break;
@@ -145,10 +144,10 @@ public enum Move
     Split
 }
 
-public class BettingStrategy(Table table, Player player)
+public class BettingStrategy(BjTable bjTable, Player player)
 {
     public GameStatus PreviousGameStatus { get; private set; } = GameStatus.New;
-    public decimal PreviousBet { get; set; } = table.MinimumBet;
+    public decimal PreviousBet { get; set; } = bjTable.MinimumBet;
 
     public void Update(GameStatus gameStatus)
     {
@@ -160,9 +159,9 @@ public class BettingStrategy(Table table, Player player)
         var currentBet = PreviousGameStatus switch
         {
             GameStatus.DealerWins => PreviousBet * 2,
-            GameStatus.PlayerWins => table.MinimumBet,
+            GameStatus.PlayerWins => bjTable.MinimumBet,
             GameStatus.Draw => PreviousBet,
-            GameStatus.New => table.MinimumBet,
+            GameStatus.New => bjTable.MinimumBet,
             _ => PreviousBet
         };
 
@@ -173,14 +172,14 @@ public class BettingStrategy(Table table, Player player)
             currentBet = player.Balance;
         }
 
-        if (currentBet < table.MinimumBet)
+        if (currentBet < bjTable.MinimumBet)
         {
-            currentBet = table.MinimumBet;
+            currentBet = bjTable.MinimumBet;
         }
 
-        if (currentBet > table.MaximumBet)
+        if (currentBet > bjTable.MaximumBet)
         {
-            currentBet = table.MaximumBet;
+            currentBet = bjTable.MaximumBet;
         }
 
         PreviousBet = currentBet;

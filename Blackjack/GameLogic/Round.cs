@@ -3,7 +3,7 @@ using Spectre.Console.Rendering;
 
 namespace Blackjack.GameLogic;
 
-public class Game
+public class Round
 {
     public Hand DealerHand { get; } = new("Dealer");
     public Hand PlayerHand { get; } = new("Player");
@@ -50,8 +50,8 @@ public class Game
     {
         PlayerHand.DealCard(_dealer.NextCard());
         AnsiConsole.Write(new Columns(new Text("Player hits"), (Text)PlayerHand.Cards.Last()) { Expand = false });
-        Table.Context?.UpdateTarget(RenderGameStatus());
-        Table.Context?.Refresh();
+        BjTable.Context?.UpdateTarget(RenderGameStatus());
+        BjTable.Context?.Refresh();
         PlayerHand.Render();
 
         if (PlayerHand.Score == 21)
@@ -98,22 +98,22 @@ public class Game
                 throw new ArgumentOutOfRangeException();
         }
 
-        Table.Context?.UpdateTarget(RenderGameStatus());
-        Table.Context?.Refresh();
+        BjTable.Context?.UpdateTarget(RenderGameStatus());
+        BjTable.Context?.Refresh();
     }
 
     public async Task Stand()
     {
         AnsiConsole.WriteLine("Player stands");
-        Table.Context?.Refresh();
+        BjTable.Context?.Refresh();
 
         while (DealerHand.Score < 17)
         {
             await Task.Delay(Delay);
             DealerHand.DealCard(_dealer.NextCard());
             AnsiConsole.Write(new Columns(new Text("Dealer hits"), (Text)DealerHand.Cards.Last()) { Expand = false });
-            Table.Context?.UpdateTarget(RenderGameStatus());
-            Table.Context?.Refresh();
+            BjTable.Context?.UpdateTarget(RenderGameStatus());
+            BjTable.Context?.Refresh();
             DealerHand.Render();
         }
 
@@ -143,8 +143,8 @@ public class Game
             StatusMessage = "Dealer wins!";
         }
 
-        Table.Context?.UpdateTarget(RenderGameStatus());
-        Table.Context?.Refresh();
+        BjTable.Context?.UpdateTarget(RenderGameStatus());
+        BjTable.Context?.Refresh();
 
         await FinishGame();
     }
@@ -164,8 +164,8 @@ public class Game
         }
 
         AnsiConsole.WriteLine("Player doubles down");
-        Table.Context?.UpdateTarget(RenderGameStatus());
-        Table.Context?.Refresh();
+        BjTable.Context?.UpdateTarget(RenderGameStatus());
+        BjTable.Context?.Refresh();
         Player.DoubleDown();
         await Hit();
 

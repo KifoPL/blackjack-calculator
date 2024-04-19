@@ -2,23 +2,23 @@ using Spectre.Console;
 
 namespace Blackjack.GameLogic;
 
-public class Table
+public class BjTable
 {
-    public Table(decimal minimumBet)
+    public BjTable(decimal minimumBet)
     {
         MinimumBet = minimumBet;
         MaximumBet = minimumBet * 20;
     }
     
-    public Table(decimal minimumBet, decimal maximumBet)
+    public BjTable(decimal minimumBet, decimal maximumBet)
     {
         MinimumBet = minimumBet;
         MaximumBet = maximumBet;
     }
 
-    public Game? Game { get; private set; }
+    public Round? Game { get; private set; }
     
-    public Game NewGame(Player player)
+    public Round NewGame(Player player)
     {
         Game = new()
         {
@@ -29,7 +29,7 @@ public class Table
         return Game;
     }
     
-    public async Task<Game> StartGame(decimal bet)
+    public async Task<Round> StartGame(decimal bet)
     {
         ArgumentNullException.ThrowIfNull(Game);
         

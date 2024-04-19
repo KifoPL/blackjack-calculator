@@ -7,16 +7,8 @@ using Blackjack.GameLogic;
 using Spectre.Console;
 using Spectre.Console.Json;
 using Rule = Spectre.Console.Rule;
-using Table = Blackjack.GameLogic.Table;
 
-const int startingBalance = 1000;
-const int minimumBet = 25;
-const int maximumBet = 500;
-
-const int simGames = 100;
-const int rounds = 25;
-
-decimal totalBalance = startingBalance;
+decimal totalBalance = Consts.StartingBalanceConst;
 
 AnsiConsole.Write(new Rule("[yellow]Deck of Cards:[/]"));
 
@@ -25,22 +17,19 @@ foreach (var cardSuit in Deck.Cards.GroupBy(c => c.Suit))
     AnsiConsole.Write(new Columns(cardSuit.Select(c => (Text)c)));
 }
 
-var table = new Table(minimumBet, maximumBet);
+var table = new BjTable(Consts.MinimumBetConst, Consts.MaximumBetConst);
 
 bool anotherGame;
 
-var player = new Player(startingBalance);
+var player = new Player(Consts.StartingBalanceConst);
 totalBalance -= player.Balance;
 
-var autoStrategy = new AutoStrategy(table, player);
+var autoStrategy = new Strategy(table, player);
 
-var chart = autoStrategy.Game.RenderGameStatus();
-List<Game> games = [];
+var chart = autoStrategy.Round.RenderGameStatus();
+List<Round> games = [];
 
-var rows = new Rows(chart, new Panel(new JsonText(JsonSerializer.Serialize(GameSummary(),
-    GameSummarySerializerContext.Default.GamesSummary))));
-
-GamesSummary GameSummary()
+GameSummary GameSummary()
 {
     int totalWon = 0;
     int totalLost = 0;
@@ -70,32 +59,49 @@ GamesSummary GameSummary()
     var status = player.Balance switch
     {
         <= 0 => GameSummaryStatus.Loss,
-        > startingBalance => GameSummaryStatus.Win,
+        > Consts.StartingBalanceConst => GameSummaryStatus.Win,
         _ => GameSummaryStatus.Inconclusive
     };
 
-    var gamesSummary = new GamesSummary(status, totalPlayed, totalWon, totalLost, totalDraws, player.Balance);
+    var gamesSummary = new GameSummary(status, totalPlayed, totalWon, totalLost, totalDraws, player.Balance);
 
     return gamesSummary;
 }
 
-var tableOfGames = new Spectre.Console.Table().Title("Games Summary").Border(TableBorder.Rounded)
+var tableOfGames = new Table().Title("Games Summary").Border(TableBorder.Rounded)
     .AddColumns("Status", "Rounds Played", "Won", "Lost", "Draws", "Balance");
 
-List<GamesSummary> summaries = [];
+List<GameSummary> summaries = [];
 
-await SimulateGames(simGames, rounds);
+await SimulateGames(Consts.SimGamesConst, Consts.RoundsConst);
 
 async Task SimulateGames(int simGames, int rounds)
 {
-    for (int i = 0; i < simGames; i++)
+    await Parallel.ForAsync(0, Consts.SimGamesConst, async (_, _) =>
     {
-        player = new Player(startingBalance);
-        totalBalance -= player.Balance;
-        games = [];
-        autoStrategy = new AutoStrategy(table, player);
-        await SimulateGame(rounds);
-    }
+        var simulator = new GameSimulator(Consts.RoundsConst);
+
+        var summary = await simulator.SimulateGame();
+        summaries.Add(summary);
+        
+        var statusColor = summary.Status switch
+        {
+            GameSummaryStatus.Loss => Color.Red,
+            GameSummaryStatus.Win => Color.Green,
+            GameSummaryStatus.Inconclusive => Color.Yellow,
+            _ => Color.Default
+        };
+        
+        var status = new Markup($"{summary.Status.ToString()[0]}", statusColor);
+        
+        string[] cells =
+        [
+            summary.TotalRounds.ToString(), summary.PlayerWins.ToString(), summary.DealerWins.ToString(),
+            summary.Draws.ToString(), summary.CurrentBalance.ToString(CultureInfo.InvariantCulture)
+        ];
+        
+        tableOfGames.AddRow([status, ..cells.Select(s => new Text(s))]);
+    });
     
     int totalWins = summaries.Count(s => s.Status is GameSummaryStatus.Win);
     int totalLosses = summaries.Count(s => s.Status is GameSummaryStatus.Loss);
@@ -112,7 +118,7 @@ async Task SimulateGames(int simGames, int rounds)
     AnsiConsole.Write(tableOfGames);
 
     var grossIncome = summaries.Sum(s => s.CurrentBalance);
-    var netIncome = grossIncome - startingBalance * simGames;
+    var netIncome = grossIncome - Consts.StartingBalanceConst * simGames;
     
     AnsiConsole.Write(new Rule($"Gross income: {grossIncome:##,###.00}, net income: {netIncome:##,###.00}"));
     
@@ -138,14 +144,14 @@ async Task SimulateGame(int rounds)
         {
             games.Add(await autoStrategy.PlayGame());
             AnsiConsole.Write(new Rows(new Panel(new JsonText(JsonSerializer.Serialize(GameSummary(),
-                GameSummarySerializerContext.Default.GamesSummary)))));
+                GameSummarySerializerContext.Default.GameSummary)))));
         }
 
         while (games.Last().Status == GameStatus.DealerWins)
         {
             games.Add(await autoStrategy.PlayGame());
             AnsiConsole.Write(new Rows(new Panel(new JsonText(JsonSerializer.Serialize(GameSummary(),
-                GameSummarySerializerContext.Default.GamesSummary)))));
+                GameSummarySerializerContext.Default.GameSummary)))));
         }
     }
     catch (Exception e)
